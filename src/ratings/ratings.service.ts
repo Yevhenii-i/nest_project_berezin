@@ -1,52 +1,64 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../database/prisma.service';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class RatingsService {
-    constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) {}
 
-    async rate(
-        userId: number,
-        entityType: 'song' | 'album' | 'artist',
-        entityId: string,
-        score: number,
-    ) {
-        return this.prisma.rating.upsert({
-            where: {
-                userId_entityId_entityType: {
-                    userId,
-                    entityId,
-                    entityType,
-                },
-            },
-            update: { score },
-            create: { userId, entityType, entityId, score },
-        });
+  async rate(userId: number, targetId: number, value: number) {
+    if (value < 1 || value > 5) {
+      throw new BadRequestException('Rating value must be between 1 and 5');
     }
 
-    async getAverageRating(
-        entityType: 'song' | 'album' | 'artist',
-        entityId: string,
-    ) {
-        const result = await this.prisma.rating.aggregate({
-            where: { entityType, entityId },
-            _avg: { score: true },
-            _count: { score: true },
-        });
+    return this.prisma.rating.upsert({
+      where: {
+        userId_targetId: { userId, targetId },
+      },
+      update: { value },
+      create: { value, userId, targetId },
+    });
+  }
 
-        return {
-            entityType,
-            entityId,
-            average: result._avg.score ?? 0,
-            votes: result._count.score,
-        };
+  async getRatingForTarget(targetId: number) {
+    return this.prisma.rating.findMany({
+      where: { targetId },
+    });
+  }
+
+  async getUserRating(userId: number, targetId: number) {
+    const rating = await this.prisma.rating.findUnique({
+      where: {
+        userId_targetId: { userId, targetId },
+      },
+    });
+
+    if (!rating) {
+      throw new NotFoundException('Rating not found');
     }
 
-    async getUserRatings(userId: number) {
-        return this.prisma.rating.findMany({
-            where: { userId },
-            orderBy: { createdAt: 'desc' },
-        });
+    return rating;
+  }
+
+  async deleteRating(userId: number, targetId: number) {
+    const rating = await this.prisma.rating.findUnique({
+      where: {
+        userId_targetId: { userId, targetId },
+      },
+    });
+
+    if (!rating) {
+      throw new NotFoundException('Rating not found');
     }
 
+    return this.prisma.rating.delete({
+      where: {
+        userId_targetId: { userId, targetId },
+      },
+    });
+  }
 }
+

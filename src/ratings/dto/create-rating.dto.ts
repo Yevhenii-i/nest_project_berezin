@@ -4,5 +4,5 @@ export class CreateRatingDto {
     @IsInt()
     @Min(1)
     @Max(5)
-    score: number;
+    value: number;
 }

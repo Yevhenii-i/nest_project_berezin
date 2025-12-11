@@ -8,27 +8,26 @@ generator client {
 }
 
 model User {
-    id        Int       @id @default(autoincrement())
-    email     String    @unique
-    username  String    @unique
-    password  String
-    createdAt DateTime  @default(now())
+  id        String   @id @default(uuid())
+  email     String   @unique
+  username  String
+  password  String   // Hashed
 
-    ratings   Rating[]
+  ratings   Rating[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Rating {
-    id         Int      @id @default(autoincrement())
-    userId     Int
-    entityId   String    // Last.fm ID or unique name
-    entityType EntityType
-    score      Int
-    createdAt  DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  value     Int
+  userId    String
+  targetId  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-    user       User     @relation(fields: [userId], references: [id])
-
-    // Prevent user from rating the same entity twice
-    @@unique([userId, entityId, entityType])
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 // Enum representing rating target type
